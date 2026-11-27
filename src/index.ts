@@ -21,7 +21,7 @@ app.use(
   '*',
   cors({
     origin: (origin) => {
-      // Sin header Origin (peticiones no-browser): no aÃ±adir cabecera CORS
+      // Sin header Origin (peticiones no-browser): no añadir cabecera CORS
       if (!origin) {
         return null;
       }
@@ -31,7 +31,7 @@ app.use(
         return origin;
       }
 
-      // OrÃ­genes de producciÃ³n
+      // Orígenes de producción
       // (madmovil.com retirado de la allowlist hasta que el dominio sea nuestro: un origen
       // no controlado en la lista es un origen de confianza regalado a quien lo registre)
       if (['https://madmovil.es', 'https://www.madmovil.es'].includes(origin)) {
@@ -46,12 +46,12 @@ app.use(
   }),
 );
 
-// El host workers.dev (pÃºblico via certificados) solo expone /health para el smoke del CI:
-// las protecciones anti-bots de la zone (api.madmovil.es) desafÃ­an a los runners de GitHub,
-// asÃ­ que el smoke pasa por aquÃ­; el resto del API se sirve Ãºnicamente por el dominio propio
+// El host workers.dev (público via certificados) solo expone /health para el smoke del CI:
+// las protecciones anti-bots de la zone (api.madmovil.es) desafían a los runners de GitHub,
+// así que el smoke pasa por aquí; el resto del API se sirve únicamente por el dominio propio
 app.use('*', async (c, next) => {
   // Sin el punto final: el edge puede entregar el FQDN con trailing dot tal cual y el
-  // endsWith('.workers.dev') lo dejarÃ­a pasar (verificado en vivo 2026-11-21)
+  // endsWith('.workers.dev') lo dejaría pasar (verificado en vivo 2026-11-21)
   const host = new URL(c.req.url).hostname.replace(/\.$/, '');
   if (host.endsWith('.workers.dev') && c.req.path !== '/health') {
     return c.json(
@@ -66,7 +66,7 @@ app.use('*', async (c, next) => {
   return next();
 });
 
-// Anti-scraping: peticiones sin User-Agent rechazadas en las familias de datos (el SSR de la web y los navegadores siempre envÃ­an UA)
+// Anti-scraping: peticiones sin User-Agent rechazadas en las familias de datos (el SSR de la web y los navegadores siempre envían UA)
 app.use('/stops/*', botFilterMiddleware);
 app.use('/lines/*', botFilterMiddleware);
 app.use('/crtm/*', botFilterMiddleware);
@@ -75,9 +75,9 @@ app.use('/connections/*', botFilterMiddleware);
 app.use('/catalog/*', botFilterMiddleware);
 
 // Rate limiting sobre rutas que consultan la API EMT (60 req/min por IP y grupo).
-// ssrBypass: el SSR de la propia web (X-SSR-Key vÃ¡lido) no consume unidades del limitador
-// (sus fetch salen de pocas IPs de colo y compartÃ­an la clave grupo:ip consigo mismos);
-// SOLO en las familias de datos â€” /admin/* y /api/favorites/* se limitan siempre
+// ssrBypass: el SSR de la propia web (X-SSR-Key válido) no consume unidades del limitador
+// (sus fetch salen de pocas IPs de colo y compartían la clave grupo:ip consigo mismos);
+// SOLO en las familias de datos — /admin/* y /api/favorites/* se limitan siempre
 app.use('/stops/*', rateLimitMiddleware('stops', { ssrBypass: true }));
 app.use('/lines/*', rateLimitMiddleware('lines', { ssrBypass: true }));
 app.use('/crtm/*', rateLimitMiddleware('crtm', { ssrBypass: true }));
@@ -86,9 +86,9 @@ app.use('/connections/*', rateLimitMiddleware('connections', { ssrBypass: true }
 app.use('/catalog/*', rateLimitMiddleware('catalog', { ssrBypass: true }));
 app.use('/admin/*', rateLimitMiddleware('admin'));
 
-// Vault de favoritos (sincronizaciÃ³n anÃ³nima cifrada E2E): bot-filter + rate limit del grupo vault
-// y un lÃ­mite extra (5/min) SOLO en la creaciÃ³n (POST) para frenar el llenado del KV ademÃ¡s de Turnstile;
-// respuestas privadas (llevan el blob de favoritos del portador del cÃ³digo secreto)
+// Vault de favoritos (sincronización anónima cifrada E2E): bot-filter + rate limit del grupo vault
+// y un límite extra (5/min) SOLO en la creación (POST) para frenar el llenado del KV además de Turnstile;
+// respuestas privadas (llevan el blob de favoritos del portador del código secreto)
 app.use('/api/favorites/*', botFilterMiddleware);
 app.use('/api/favorites/*', rateLimitMiddleware('vault'));
 app.use(
@@ -106,7 +106,7 @@ app.use(
       c.json(
         {
           status: 'error',
-          message: `El cuerpo supera el tamaÃ±o mÃ¡ximo de ${FAVORITES_VAULT_CONFIG.MAX_BODY_CHARS} caracteres`,
+          message: `El cuerpo supera el tamaño máximo de ${FAVORITES_VAULT_CONFIG.MAX_BODY_CHARS} caracteres`,
           timestamp: new Date().toISOString(),
         },
         413,
@@ -124,7 +124,7 @@ app.get('/robots.txt', (c) => {
   return c.text('User-agent: *\nDisallow: /\n');
 });
 
-// Contrato de respuesta tambiÃ©n fuera de los handlers: 404 de rutas inexistentes y
+// Contrato de respuesta también fuera de los handlers: 404 de rutas inexistentes y
 // excepciones no capturadas (search/catalog/connections no tienen try/catch) salen con
 // el envelope {status:'error'} y dejan rastro en logs, no como texto plano de Hono
 app.notFound((c) =>
@@ -150,7 +150,7 @@ app.onError((err, c) => {
   );
 });
 
-// Rutas pÃºblicas (sin autenticaciÃ³n)
+// Rutas públicas (sin autenticación)
 app.route('/health', health);
 app.route('/admin', admin);
 app.route('/stops', stops);
@@ -160,7 +160,7 @@ app.route('/search', search);
 app.route('/connections', connections);
 app.route('/catalog', catalog);
 
-// Vault de favoritos (autorizaciÃ³n por cÃ³digo secreto derivado, sin cuentas)
+// Vault de favoritos (autorización por código secreto derivado, sin cuentas)
 app.route('/api/favorites', favoritesVaultRoutes);
 
 export default app;
