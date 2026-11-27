@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/ZiraCode/madmovil_server#readme",
   "dependencies": {
-    "hono": "^4.10.6"
+    "hono": "^4.13.21"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
