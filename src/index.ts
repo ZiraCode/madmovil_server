@@ -35,11 +35,7 @@ app.use(
       // (madmovil.com retirado de la allowlist hasta que el dominio sea nuestro: un origen
       // no controlado en la lista es un origen de confianza regalado a quien lo registre)
       if (
-        [
-          'https://madmovil.es',
-          'https://www.madmovil.es',
-          'https://madmovil_web.yagorat.workers.dev',
-        ].includes(origin)
+        ['https://madmovil.es', 'https://www.madmovil.es'].includes(origin)
       ) {
         return origin;
       }
