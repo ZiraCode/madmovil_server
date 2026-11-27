@@ -1,0 +1,59 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    // .mjs del pipeline incluido: mismo formatter/linter que src y tests (C-16)
+    "includes": ["src/**", "tests/**", "scripts/**"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    // 100 (no el 80 por defecto): el estilo de facto del repo firma funciones y docstrings
+    // en español largos; menos churn en el commit de formateo
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      // estilo de la mayoría del repo (21/26 ficheros ya usaban single+semicolon; los 5 del
+      // vault/middleware convergen aquí — objetivo declarado de C-16)
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        // OFF: ~100 aserciones no-null deliberadas tras guardas previas (match[1], dests.byDir[dir]
+        // con dir!==null comprobado, fixtures con expect(x!).toBe). Reescribirlas NO es un fix
+        // trivial y C-16 prohíbe arreglos no triviales en el commit de formateo; noUncheckedIndexedAccess
+        // queda aparcado por el mismo motivo (informe C-16)
+        "noNonNullAssertion": "off",
+        // OFF: la concatenación de strings es deliberada y legible (mensajes de log/commit del
+        // pipeline); forzar template literals es churn sin valor
+        "useTemplate": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["tests/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            // OFF solo en tests: jsonBody (tests/helpers/json.ts) es el escape hatch DOCUMENTADO
+            // de C-11 para el unknown de res.json() del runtime; src mantiene la regla activa
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    }
+  ]
+}

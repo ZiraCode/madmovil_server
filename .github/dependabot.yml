@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Dependencias npm (runtime + toolchain)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+  # Acciones del CI y del cron CRTM
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,0 +1,50 @@
+name = "madmovil-server"
+main = "src/index.ts"
+compatibility_date = "2024-11-15"
+account_id = "03041020f48c5e91bc667f8f8eb671f5"
+# workers.dev solo expone /health (gate en src/index.ts): el smoke del CI no puede pasar por la
+# zone (Bot Fight Mode desafía a los runners de GitHub); el resto del API vive en api.madmovil.es
+workers_dev = true
+preview_urls = false
+
+# Dominio propio del API (crea el DNS + cert automáticamente)
+routes = [
+  { pattern = "api.madmovil.es", custom_domain = true }
+]
+
+# Desarrollo local: wrangler dev (usa KV local automático)
+# Despliegues de prueba: wrangler deploy (usa EMT_CACHE real de la cuenta)
+kv_namespaces = [
+  { binding = "EMT_CACHE", id = "ca76a7b38d4a44d58768ed83dc655ba2" }
+]
+
+# Geometría de recorridos CRTM (docs line/<routeId>.json escritos por scripts/crtm-ingest.mjs vía REST)
+r2_buckets = [
+  { binding = "CRTM_SHAPES", bucket_name = "madmovil-crtm-shapes" }
+]
+
+# Rate limiting nativo (60 req/min por clave, aplicado en middleware a rutas que consultan EMT)
+# El period debe ser 10 o 60; mantener RATE_LIMIT_PERIOD_SEC en src/middleware/rate-limit.ts sincronizado
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+# Límite adicional solo para la CREACIÓN de vaults de favoritos (anti-llenate-KV; el reto
+# principal es Turnstile) — aplicado en el middleware solo al POST de /api/favorites/vault
+[[ratelimits]]
+name = "VAULT_CREATE_LIMITER"
+namespace_id = "1002"
+
+  [ratelimits.simple]
+  limit = 5
+  period = 60
+
+# Futuro entorno de producción (cuando exista el dominio madmovil.com):
+# [env.production]
+# routes = ["api.madmovil.com/*"]
+# kv_namespaces = [ { binding = "EMT_CACHE", id = "<id KV produccion>" } ]
+# Secrets: wrangler secret put <NOMBRE> --env production

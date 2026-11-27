@@ -1,0 +1,50 @@
+name: CRTM refresh
+
+on:
+  schedule:
+    - cron: "30 5 * * *" # 07:30 Madrid en verano (06:30 en invierno)
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Reescribir todos los artefactos aunque los items no hayan cambiado (--force)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crtm-refresh
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Ingest GTFS CRTM -> KV + R2
+        # Escribe KV (crtm:*) y R2 (shapes line/<routeId>.json en madmovil-crtm-shapes):
+        # CLOUDFLARE_API_TOKEN necesita "Workers KV Storage: Edit" y "Workers R2 Storage: Edit"
+        # NAP_API_KEY da acceso al GTFS de Cercanías Renfe (nap.transportes.gob.es)
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Falta el secret CLOUDFLARE_API_TOKEN en el repositorio (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          if [ -z "$NAP_API_KEY" ]; then
+            echo "::error::Falta el secret NAP_API_KEY en el repositorio (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          EXTRA=""
+          if [ "${{ inputs.force }}" = "true" ]; then EXTRA="--force"; fi
+          node scripts/crtm-ingest.mjs $EXTRA
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          NAP_API_KEY: ${{ secrets.NAP_API_KEY }}
+          NODE_OPTIONS: --max-old-space-size=4096

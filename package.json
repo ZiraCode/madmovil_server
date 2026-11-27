@@ -1,0 +1,40 @@
+{
+  "name": "madmovil_server",
+  "version": "1.0.0",
+  "description": "API de transporte de Madrid (EMT + CRTM + Cercanías) sobre Cloudflare Workers",
+  "main": "index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc",
+    "typecheck:tests": "tsc -p tsconfig.test.json",
+    "lint": "biome lint src tests scripts",
+    "format": "biome format --write src tests scripts",
+    "format:check": "biome format src tests scripts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZiraCode/madmovil_server.git"
+  },
+  "keywords": [],
+  "author": "ZiraCodee",
+  "license": "MIT",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ZiraCode/madmovil_server/issues"
+  },
+  "homepage": "https://github.com/ZiraCode/madmovil_server#readme",
+  "dependencies": {
+    "hono": "^4.10.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8",
+    "@cloudflare/workers-types": "^5.20260814.1",
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.134.0"
+  }
+}
