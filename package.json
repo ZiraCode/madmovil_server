@@ -33,7 +33,7 @@
     "@biomejs/biome": "2.6.8",
     "@cloudflare/workers-types": "^5.20260814.1",
     "@types/node": "^24.10.1",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11",
     "wrangler": "^4.134.0"
   }
