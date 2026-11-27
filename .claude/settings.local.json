@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(npx wrangler kv:namespace create:*)",
+      "Bash(npx wrangler kv namespace create:*)",
+      "Bash(touch:*)",
+      "WebFetch(domain:openapi.emtmadrid.es)",
+      "WebFetch(domain:apidocs.emtmadrid.es)",
+      "WebFetch(domain:gitlab.com)",
+      "Bash(npm run build:*)"
+    ],
+    "deny": []
+  }
+}
