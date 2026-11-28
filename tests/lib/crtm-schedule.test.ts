@@ -163,6 +163,59 @@ describe('computeStopDepartures', () => {
     expect(departures.map((d) => d.time)).toEqual(['10:25', '10:30']);
   });
 
+  it('colapsa trips duplicados del feed (misma línea+dir+instante+headsign, sin tid)', () => {
+    // 09103/Torrelodones: la 1 urbana declara 84 trips con solo 35 horas únicas (la misma
+    // expedición publicada una vez por tipo de día lv/ls/sdf bajo un calendario "todos los
+    // días") → 3 trips idénticos = 1 salida. Un tid distinto al mismo segundo (refuerzo
+    // real, p. ej. cercanías) y un headsign distinto (variante) se conservan
+    const svc: CRTMService = {
+      id: 'TODOS',
+      days: [1, 1, 1, 1, 1, 1, 1],
+      from: '20260801',
+      to: '20260831',
+      exceptions: {},
+    };
+    const trip = (dep: number, extra: Partial<CRTMTrip> = {}): CRTMTrip => ({
+      dir: 0,
+      svc: 0,
+      headsign: 'PUEBLO - ÁREA H. SUR',
+      dep,
+      stops: ['09568@0'],
+      ...extra,
+    });
+    const doc: CRTMLineDoc = {
+      routeId: '9__1__152_',
+      label: '1',
+      name: 'FFCC-PUEBLO-ÁREA HOMOGÉNEA SUR',
+      network: 'urban',
+      municipality: 'Torrelodones',
+      url: null,
+      directions: [{ id: 0, headsign: 'PUEBLO - ÁREA H. SUR', stops: ['09568'] }],
+      services: [svc],
+      trips: [
+        trip(37500), // 10:25 ×3 idénticos
+        trip(37500),
+        trip(37500),
+        trip(38100), // 10:35
+        { ...trip(38100), tid: 'MR1' }, // refuerzo real al mismo segundo
+        { ...trip(38100), tid: 'MR2' },
+        trip(39300, { headsign: 'VARIANTE CORTA' }), // mismo instante, headsign distinto
+      ],
+    };
+
+    const departures = computeStopDepartures([doc], '09568', CRTM_TEST_NOW, 7200, 100);
+
+    expect(departures).toHaveLength(5);
+    expect(departures.filter((d) => d.time === '10:25')).toHaveLength(1);
+    expect(departures.filter((d) => d.time === '10:35')).toHaveLength(3);
+    expect(departures.filter((d) => d.tripId === 'MR1' || d.tripId === 'MR2')).toHaveLength(2);
+    expect(departures.some((d) => d.headsign === 'VARIANTE CORTA')).toBe(true);
+
+    // modo fecha: mismo colapso (computeStopDayDepartures comparte el núcleo)
+    const dayDeps = computeStopDayDepartures([doc], '09568', '20260820', 100);
+    expect(dayDeps.filter((d) => d.time === '10:25')).toHaveLength(1);
+  });
+
   it('doc de catálogo (sin trips): sin salidas y sin fallos', () => {
     const catalogDoc = {
       ...crtmMetroFreqDocFixture(),

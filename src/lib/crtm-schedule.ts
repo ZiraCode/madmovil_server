@@ -402,11 +402,28 @@ function collectStopDepartures(
     }
   }
 
-  out.sort(
-    (a, b) =>
-      Date.parse(a.departureISO) - Date.parse(b.departureISO) || a.line.localeCompare(b.line),
-  );
-  return out.slice(0, maxResults);
+  // Trips duplicados del feed: operadores que publican la misma expedición una vez por
+  // tipo de día (lv/ls/sdf) bajo un calendario "todos los días" generan salidas exactas
+  // repetidas (hallazgo 2026-11-28, 09103: la 1 urbana de Torrelodones 9__1__152_ declara
+  // 84 trips con solo 35 horas únicas — 7:30 ×3, 8:30 ×3...). Misma línea+dirección+
+  // instante+tripId+headsign = el mismo bus repetido: se colapsa. El tripId forma parte
+  // de la clave para no tocar coincidencias reales distinguibles (refuerzos con tid
+  // distinto, p. ej. cercanías, que el overlay RT necesita enteros)
+  const seen = new Set<string>();
+  const unique: CRTMDeparture[] = [];
+  for (const dep of out) {
+    const key = `${dep.routeId}|${dep.dir}|${dep.departureISO}|${dep.tripId ?? ''}|${dep.headsign}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(dep);
+  }
+
+  return unique
+    .sort(
+      (a, b) =>
+        Date.parse(a.departureISO) - Date.parse(b.departureISO) || a.line.localeCompare(b.line),
+    )
+    .slice(0, maxResults);
 }
 
 /**

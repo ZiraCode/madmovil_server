@@ -2115,7 +2115,11 @@ describe('GET /crtm/stops/arrivals/:stopCode (widget CRTM: bus/ML/metro)', () =>
     });
   });
 
-  it('parada sin servicio ({} del widget) → 200 distinguishible: available true y 0 llegadas', async () => {
+  it('board del widget VIVO pero vacío (SAE sin datos) → tablón teórico con available false', async () => {
+    // Caso 09103/Torrelodones: el widget responde actualDate fresca + times {} (operador
+    // sin estimaciones publicadas en el SAE) mientras el GTFS tiene salidas en ventana —
+    // servir "no hay llegadas" sería mentir; se degrada a teórico como si estuviera caído
+    const iso = (offsetSec: number) => new Date(CRTM_TEST_NOW + offsetSec * 1000).toISOString();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string | URL) => {
@@ -2127,11 +2131,55 @@ describe('GET /crtm/stops/arrivals/:stopCode (widget CRTM: bus/ML/metro)', () =>
             }),
           );
         }
-        return Promise.resolve(new Response('{}', { status: 200 }));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              stopTimes: {
+                actualDate: iso(0),
+                stop: { codStop: '8_09568', name: 'Pº Extremadura - Av. Portugal' },
+                times: {},
+                linesStatus: { LineStatus: [] },
+              },
+            }),
+            { status: 200 },
+          ),
+        );
       }),
     );
 
     const res = await app.request('/crtm/stops/arrivals/09568', {}, envWidget().env);
+
+    expect(res.status).toBe(200);
+    const body = await jsonBody(res);
+    expect(body.data.realtime).toMatchObject({
+      available: false,
+      source: 'crtm-widget',
+      feedTimestamp: new Date(CRTM_TEST_NOW).toISOString(),
+    });
+    expect(body.data.count).toBeGreaterThan(0);
+    const deps = body.data.departures as Record<string, unknown>[];
+    expect(deps.every((d) => d.realtime === false && d.scheduledISO === d.estimatedISO)).toBe(true);
+    expect(deps[0]).toMatchObject({ line: '421', routeId: '8__421___', network: 'interurban' });
+    expect(body.message).toContain('tiempo real no disponible');
+  });
+
+  it('widget vivo + board vacío + sin teórico en ventana → available true y "No hay llegadas"', async () => {
+    // 08712 no tiene docs de línea en KV: el vacío queda como el widget lo cuenta
+    // ("no hay vehículos ahora"), distinguishible del degradado por la causa real
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string | URL) => {
+        const u = new URL(String(url));
+        if (u.pathname.endsWith(CRTM_CONFIG.WIDGET.GET_STOP)) {
+          const codStop = u.searchParams.get('codStop') ?? '';
+          const body = codStop === '9_08712' ? { stops: { Stop: { codStop } } } : { stops: {} };
+          return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+        }
+        return Promise.resolve(new Response('{}', { status: 200 }));
+      }),
+    );
+
+    const res = await app.request('/crtm/stops/arrivals/08712', {}, envWidget().env);
 
     const body = await jsonBody(res);
     expect(body.status).toBe('success');

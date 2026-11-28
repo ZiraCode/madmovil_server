@@ -176,8 +176,9 @@ export async function cercaniasArrivalsResponse(
 /**
  * Llegadas de bus interurbano/urbano, ML y metro: API del widget oficial del CRTM
  * (estimaciones del SAE por línea; el codLine del widget es nuestro routeId GTFS y en bus
- * el modo del poste 8_/9_ se resuelve y cachea vía GetStops.php). Widget caído o congelado
- * → tablón teórico GTFS con realtime.available: false (200, degradado).
+ * el modo del poste 8_/9_ se resuelve y cachea vía GetStops.php). Widget caído, congelado
+ * o VIVO pero sin tiempos para la parada → tablón teórico GTFS con realtime.available:
+ * false (200, degradado).
  */
 export async function widgetArrivalsResponse(
   c: Context<{ Bindings: Env }>,
@@ -196,14 +197,14 @@ export async function widgetArrivalsResponse(
     (snapshot): snapshot is WidgetStopTimes =>
       snapshot !== null && isWidgetStopTimesFresh(snapshot),
   );
-  const rtAvailable = snapshots.length > 0;
+  const widgetUp = snapshots.length > 0;
 
   const items: CRTMArrivalItem[] = [];
   let feedTimestampMs: number | null = null;
   let noScheduleData: NoScheduleSummary | null = null;
   const stopsByCode = stopNameIndex(allStops);
 
-  if (rtAvailable) {
+  if (widgetUp) {
     // Destino canónico por (routeId, dir): el SAE manda como dest la última parada física del
     // sentido; la UI muestra el oficial (mode(dest) > cabecera, igual que detail/timetable)
     // solo cuando el dest del SAE ES la terminal del sentido — variantes cortas reales intactas
@@ -241,8 +242,16 @@ export async function widgetArrivalsResponse(
       }
     }
     items.sort((a, b) => Date.parse(a.estimatedISO) - Date.parse(b.estimatedISO));
-  } else {
-    // degradación: tablón teórico del GTFS (computeStopDepartures) con realtime.available false;
+  }
+
+  // Board vacío → tablón teórico, tanto si el widget está caído/congelado como si está
+  // VIVO pero el SAE no publica tiempos para esta parada (hallazgo 2026-11-28, 09103
+  // Torrelodones: actualDate fresca, SAEStatus true en sus 4 líneas y times {} TODO el
+  // día con salidas GTFS dentro de la ventana — servir "no hay llegadas" ahí es mentir).
+  // Si el teórico tampoco tiene salidas se conserva la respuesta del widget (available
+  // true = "no hay vehículos ahora"), distinguible del vacío por la causa real
+  let rtAvailable = widgetUp;
+  if (items.length === 0) {
     // ?line= filtra los docs antes del cap (mismo criterio que cercanías y que schedule — C-10)
     const docs = await getCRTMStopLineDocs(c.env, stop);
     noScheduleData = noScheduleSummary(docs, stopCode, lineQuery);
@@ -272,6 +281,7 @@ export async function widgetArrivalsResponse(
         ...(dep.stale ? { stale: true } : {}),
       });
     }
+    if (items.length > 0) rtAvailable = false;
   }
 
   return c.json(
